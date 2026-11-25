@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DCS WWII SFM Studio</title>
+  <meta name="description" content="Compile ready-to-use SFM .lua files for DCS World WWII aircraft mods.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">&#9650;</span>
+      <div>
+        <h1>DCS WWII SFM Studio <small>v2.45</small></h1>
+        <p>Standard Flight Model compiler for DCS World modders</p>
+      </div>
+    </div>
+    <div class="server-status" id="serverStatus" role="status" aria-live="polite">
+      <span class="dot dot-wait" id="statusDot"></span>
+      <span id="statusText">Checking server...</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel input-panel" aria-label="Aircraft configuration">
+      <div class="mode-switch" role="tablist" aria-label="Mode">
+        <button class="mode-btn active" id="modePreset" role="tab" aria-selected="true" type="button">Catalog (PRESET)</button>
+        <button class="mode-btn" id="modeCustom" role="tab" aria-selected="false" type="button">Modder (CUSTOM)</button>
+      </div>
+
+      <!-- PRESET MODE -->
+      <div id="presetPane">
+        <div class="row">
+          <label for="theaterFilter">Theater</label>
+          <div class="seg" id="theaterFilter">
+            <button type="button" class="seg-btn active" data-theater="ALL">ALL</button>
+            <button type="button" class="seg-btn" data-theater="PTO">PTO</button>
+            <button type="button" class="seg-btn" data-theater="ETO">ETO</button>
+          </div>
+        </div>
+        <div class="row">
+          <label for="aircraftSelect">Aircraft</label>
+          <select id="aircraftSelect" disabled><option>Loading catalog...</option></select>
+        </div>
+        <div class="info-card" id="aircraftInfo" hidden></div>
+
+        <details class="override-box">
+          <summary>Quick Override (optional)</summary>
+          <p class="hint">Leave a field empty to keep the catalog value.</p>
+          <div class="grid-2" id="overrideGrid"></div>
+        </details>
+      </div>
+
+      <!-- CUSTOM MODE -->
+      <div id="customPane" hidden>
+        <div class="subtabs" id="customTabs" role="tablist"></div>
+        <div id="customFields"></div>
+
+        <div class="engine-select">
+          <h3>Engine</h3>
+          <div class="seg" id="engineModeSeg">
+            <button type="button" class="seg-btn active" data-engine-mode="preset">Use catalog engine</button>
+            <button type="button" class="seg-btn" data-engine-mode="custom">CUSTOM engine</button>
+          </div>
+          <div id="enginePresetPane" class="row">
+            <label for="engineSelect">Catalog engine</label>
+            <select id="engineSelect" disabled><option>Loading catalog...</option></select>
+          </div>
+          <div id="engineCustomPane" hidden>
+            <div class="subtabs" id="engineTabs" role="tablist"></div>
+            <div id="engineFields"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" id="compileBtn" type="button">Compile SFM</button>
+        <span class="msg" id="compileMsg" role="alert"></span>
+      </div>
+    </section>
+
+    <section class="panel hangar-panel" aria-label="My Hangar">
+      <h2>My Hangar <small>(stored in this browser only)</small></h2>
+      <div class="hangar-cols">
+        <div>
+          <h3>Aircraft</h3>
+          <ul class="hangar-list" id="hangarAircraft"></ul>
+          <div class="btn-row">
+            <button class="btn" id="saveAircraftBtn" type="button">Save current CUSTOM aircraft</button>
+          </div>
+        </div>
+        <div>
+          <h3>Engines</h3>
+          <ul class="hangar-list" id="hangarEngines"></ul>
+          <div class="btn-row">
+            <button class="btn" id="saveEngineBtn" type="button">Save current CUSTOM engine</button>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="exportHangarBtn" type="button">Export hangar (.json)</button>
+        <label class="btn file-btn">Import hangar (.json)
+          <input type="file" id="importHangarInput" accept="application/json,.json" hidden>
+        </label>
+      </div>
+      <p class="msg" id="hangarMsg" role="status"></p>
+    </section>
+
+    <section class="panel results-panel" id="resultsPanel" aria-label="Results" hidden>
+      <h2 id="resultTitle">Results</h2>
+      <p class="hint" id="resultSubtitle"></p>
+      <div class="cards" id="summaryCards"></div>
+
+      <div class="charts">
+        <div class="chart-box">
+          <h3>Drag polar (CD vs CL, M 0.24)</h3>
+          <canvas id="polarChart" height="260"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Aerodynamic table (10 Mach points)</h3>
+          <div class="table-wrap">
+            <table id="aeroTable">
+              <thead>
+                <tr><th>#</th><th>M</th><th>Cx0</th><th>Cya</th><th>B</th><th>B4</th><th>Omxmax</th><th>Aldop</th><th>Cymax</th><th>Flight regime</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="lua-box">
+        <div class="lua-head">
+          <h3>Generated Lua</h3>
+          <div class="btn-row">
+            <button class="btn" id="copyLuaBtn" type="button">Copy Clean Lua</button>
+            <button class="btn primary" id="downloadLuaBtn" type="button">Download SFM.lua</button>
+          </div>
+        </div>
+        <pre id="luaView" tabindex="0"></pre>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>All aerodynamic calculations are performed on a private server. This page contains no formulas or master databases.
+       Unofficial community tool, not affiliated with Eagle Dynamics SA.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
